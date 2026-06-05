@@ -271,7 +271,7 @@ export const widgetStyles = css`
   .message-bubble {
     max-width: 85%;
     padding: var(--onyx-space-sm) var(--onyx-space-md);
-    border-radius: var(--onyx-radius-12);
+    // border-radius: var(--onyx-radius-12);
     word-wrap: break-word;
     font-size: var(--onyx-font-size-main);
     line-height: var(--onyx-line-height-main);
@@ -280,12 +280,14 @@ export const widgetStyles = css`
   .message.user .message-bubble {
     background: var(--onyx-user-message-bg);
     color: var(--text-04);
+    border-radius: var(--onyx-radius-12) var(--onyx-radius-12) 0;
     // border: 1px solid var(--border-01);
   }
 
   .message.assistant .message-bubble {
     background: var(--onyx-assistant-message-bg);
     color: var(--text-04);
+    border-radius: var(--onyx-radius-12) var(--onyx-radius-12) var(--onyx-radius-12) 0 ;
     // border: 1px solid var(--border-01);
   }
 
