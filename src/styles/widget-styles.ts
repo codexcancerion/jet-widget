@@ -53,7 +53,7 @@ export const widgetStyles = css`
     right: 20px;
     width: 400px;
     height: 600px;
-    background: var(--background-neutral-03);
+    background: var(--background-neutral-00);
     border-radius: var(--onyx-radius-16);
     box-shadow: var(--shadow-02);
     display: flex;
@@ -108,7 +108,7 @@ export const widgetStyles = css`
     align-items: center;
     justify-content: space-between;
     padding: var(--onyx-space-md);
-    background: var(--background-neutral-03);
+    background: var(--background-neutral-00);
     color: var(--text-04);
   }
 
@@ -173,8 +173,58 @@ export const widgetStyles = css`
     flex-direction: column;
     gap: var(--onyx-space-md);
     background: var(--background-neutral-00);
-    border-radius: var(--onyx-radius-12) var(--onyx-radius-12) 0 0;
+    border-radius: var(--onyx-radius-12) var(--onyx-radius-12);
   }
+
+  /* Empty-state welcome placeholder */
+  .empty-welcome {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: var(--onyx-space-md);
+    padding: 40px 20px;
+    color: var(--text-04);
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    pointer-events: none; /* decorative only */
+    transition: opacity 320ms cubic-bezier(0.4,0,0.2,1), transform 320ms cubic-bezier(0.4,0,0.2,1);
+  }
+
+  .empty-welcome__logo {
+    width: 84px;
+    height: 84px;
+    border-radius: 50%;
+    // background: linear-gradient(135deg, var(--theme-primary-05), var(--theme-primary-06));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-02);
+    color: var(--text-light-05);
+    font-size: 28px;
+    flex-shrink: 0;
+  }
+
+  .empty-welcome__title {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+
+  .empty-welcome__subtitle {
+    font-size: 14px;
+    opacity: 0.85;
+    max-width: 320px;
+  }
+
+  .empty-welcome--hide {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.98);
+    pointer-events: none;
+  }
+
 
   .message {
     display: flex;

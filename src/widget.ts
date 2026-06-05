@@ -44,6 +44,8 @@ export class OnyxChatWidget extends LitElement {
   @state() private streamingStatus = ""; // e.g., "Searching the web...", "Generating response..."
   @state() private error?: string;
   @state() private inputValue = "";
+  @state() private showEmptyPlaceholder = false;
+  @state() private showEmptyHiding = false;
 
   private config!: WidgetConfig;
   private apiService!: ApiService;
@@ -115,6 +117,9 @@ export class OnyxChatWidget extends LitElement {
       this.chatSessionId = stored.sessionId;
       this.messages = stored.messages;
     }
+
+    // Show empty placeholder when there are no messages
+    this.showEmptyPlaceholder = this.messages.length === 0;
 
     // Auto-open if inline mode
     if (this.config.mode === "inline") {
@@ -189,6 +194,7 @@ export class OnyxChatWidget extends LitElement {
     this.documentMap.clear();
     this.citationMap.clear();
     clearSession();
+    this.showEmptyPlaceholder = true;
   }
 
   /**
@@ -326,6 +332,16 @@ export class OnyxChatWidget extends LitElement {
 
     // Clear input immediately
     this.inputValue = "";
+
+    // If the empty placeholder is visible, start hide animation and remove after animation
+    if (this.showEmptyPlaceholder) {
+      this.showEmptyHiding = true;
+      // Match CSS transition duration (320ms) with small buffer
+      setTimeout(() => {
+        this.showEmptyPlaceholder = false;
+        this.showEmptyHiding = false;
+      }, 360);
+    }
 
     // Add user message
     const userMessage: ChatMessage = {
@@ -599,6 +615,24 @@ export class OnyxChatWidget extends LitElement {
     return html`
       
       <div class="messages">
+        ${(this.showEmptyPlaceholder || (this.messages.length === 0 && !this.isStreaming))
+          ? html`
+              <div
+                class="empty-welcome ${this.showEmptyHiding ? "empty-welcome--hide" : ""}"
+                aria-hidden=${this.messages.length > 0}
+              >
+                <div class="empty-welcome__logo">
+                  <img
+                    src="${this.config.logo || DEFAULT_LOGO}"
+                    alt=""
+                    style="width:56px;height:56px;object-fit:contain;border-radius:50%"
+                  />
+                </div>
+                <div class="empty-welcome__title">Hi there, ${"I'm " + this.config.agentName || "Assistant"}</div>
+                <div class="empty-welcome__subtitle">How can I help you today?</div>
+              </div>
+            `
+          : ""}
         ${this.error ? html` <div class="error">${this.error}</div> ` : ""}
         ${this.messages.map(
           (msg) => html`
