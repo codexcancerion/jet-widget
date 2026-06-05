@@ -137,7 +137,7 @@ export const widgetStyles = css`
   }
 
   .header-title {
-    font-weight: 600;
+    font-weight: bold;
     font-size: var(--onyx-font-size-label);
     line-height: var(--onyx-line-height-label);
     color: var(--text-04);
