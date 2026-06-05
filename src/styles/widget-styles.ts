@@ -87,7 +87,8 @@ export const widgetStyles = css`
   .container.inline.compact {
     background: transparent;
     border: none;
-    box-shadow: none;
+    // box-shadow: none;    
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     border-radius: var(--onyx-radius-16);
   }
 
@@ -556,7 +557,7 @@ export const widgetStyles = css`
     padding: var(--onyx-space-md);
     background: var(--background-neutral-00);
     border-radius: var(--onyx-radius-16);
-    border: 1px solid var(--border-01);
+    // border: 1px solid var(--border-01);
     box-shadow: var(--shadow-02);
     transition:
       border-color var(--onyx-transition-base),

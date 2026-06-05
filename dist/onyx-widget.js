@@ -205,7 +205,8 @@ var e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow)&
   .container.inline.compact {
     background: transparent;
     border: none;
-    box-shadow: none;
+    // box-shadow: none;    
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     border-radius: var(--onyx-radius-16);
   }
 
@@ -674,7 +675,7 @@ var e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow)&
     padding: var(--onyx-space-md);
     background: var(--background-neutral-00);
     border-radius: var(--onyx-radius-16);
-    border: 1px solid var(--border-01);
+    // border: 1px solid var(--border-01);
     box-shadow: var(--shadow-02);
     transition:
       border-color var(--onyx-transition-base),
@@ -994,7 +995,7 @@ var e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow)&
           .value=${this.inputValue}
           @input=${this.handleInput}
           @keydown=${this.handleKeyDown}
-          placeholder="Ask ${this.config.agentName||"Assistant"} anything..."
+          placeholder="Type to ask ${this.config.agentName||"Assistant"} anything..."
           ?disabled=${this.isLoading||this.isStreaming}
         />
         <button

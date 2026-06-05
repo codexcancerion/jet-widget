@@ -786,7 +786,7 @@ export class OnyxChatWidget extends LitElement {
           .value=${this.inputValue}
           @input=${this.handleInput}
           @keydown=${this.handleKeyDown}
-          placeholder="Ask ${this.config.agentName || "Assistant"} anything..."
+          placeholder="Type to ask ${this.config.agentName || "Assistant"} anything..."
           ?disabled=${this.isLoading || this.isStreaming}
         />
         <button
