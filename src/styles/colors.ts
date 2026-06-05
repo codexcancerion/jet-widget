@@ -34,5 +34,9 @@ export const colors = css`
     /* Status / Error */
     --status-error-01: #fee;
     --status-error-05: #c00;
+
+      /* Message Bubbles */
+    --onyx-user-message-bg: var(--background-neutral-00);
+    --onyx-assistant-message-bg: var(--background-neutral-03);
   }
 `;

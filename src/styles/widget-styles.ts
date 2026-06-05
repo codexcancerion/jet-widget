@@ -53,17 +53,18 @@ export const widgetStyles = css`
     right: 20px;
     width: 400px;
     height: 600px;
-    background: var(--background-neutral-00);
+    background: var(--background-neutral-03);
     border-radius: var(--onyx-radius-16);
     box-shadow: var(--shadow-02);
     display: flex;
     flex-direction: column;
     overflow: hidden;
     z-index: var(--onyx-z-widget);
-    border: 1px solid var(--border-01);
+    // border: 1px solid var(--border-01);
     animation: fadeInSlideUp 300ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
     opacity: 0;
     transform: translateY(20px);
+    // gap: 10px;
   }
 
   @keyframes fadeInSlideUp {
@@ -107,9 +108,8 @@ export const widgetStyles = css`
     align-items: center;
     justify-content: space-between;
     padding: var(--onyx-space-md);
-    background: var(--background-neutral-00);
+    background: var(--background-neutral-03);
     color: var(--text-04);
-    border-bottom: 1px solid var(--border-01);
   }
 
   .header-left {
@@ -173,6 +173,7 @@ export const widgetStyles = css`
     flex-direction: column;
     gap: var(--onyx-space-md);
     background: var(--background-neutral-00);
+    border-radius: var(--onyx-radius-12) var(--onyx-radius-12) 0 0;
   }
 
   .message {
@@ -201,13 +202,13 @@ export const widgetStyles = css`
   .message.user .message-bubble {
     background: var(--onyx-user-message-bg);
     color: var(--text-04);
-    border: 1px solid var(--border-01);
+    // border: 1px solid var(--border-01);
   }
 
   .message.assistant .message-bubble {
     background: var(--onyx-assistant-message-bg);
     color: var(--text-04);
-    border: 1px solid var(--border-01);
+    // border: 1px solid var(--border-01);
   }
 
   /* Markdown styles */
@@ -351,7 +352,7 @@ export const widgetStyles = css`
   }
 
   .input-wrapper {
-    border-top: 1px solid var(--border-01);
+    // border-top: 1px solid var(--border-01);
     background: var(--background-neutral-00);
   }
 
@@ -366,13 +367,13 @@ export const widgetStyles = css`
     flex: 1;
     min-width: 0;
     padding: var(--onyx-space-xs) var(--onyx-space-sm);
-    border: 1px solid var(--theme-primary-05);
-    border-radius: var(--onyx-radius-08);
+    border: 0px solid var(--theme-primary-05);
+    border-radius: var(--onyx-radius-12);
     font-size: var(--onyx-font-size-main);
     line-height: var(--onyx-line-height-main);
     outline: none;
     font-family: var(--onyx-font-family);
-    background: var(--background-neutral-00);
+    background: var(--background-neutral-03);
     color: var(--text-04);
     transition:
       border-color var(--onyx-transition-fast),
@@ -449,7 +450,8 @@ export const widgetStyles = css`
     font-size: 11px;
     line-height: 1.3;
     text-align: center;
-    border-bottom: 1px solid var(--border-01);
+    // border-bottom: 1px solid var(--border-01);
+    margin-bottom: var(--onyx-space-md);
   }
 
   .error {
