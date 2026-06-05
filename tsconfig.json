@@ -8,8 +8,7 @@
       "DOM",
       "DOM.Iterable"
     ],
-    "types": ["vite/client", "react", "react-dom"],
-    "jsx": "react-jsx",
+    "types": ["vite/client"],
     "module": "ESNext",
     "skipLibCheck": true,
     "esModuleInterop": true,
@@ -35,10 +34,5 @@
   },
   "include": [
     "src"
-  ],
-  "exclude": [
-    "src/styles/colors.ts",
-    "src/styles/theme.ts",
-    "src/styles/widget-styles.ts"
   ]
 }
