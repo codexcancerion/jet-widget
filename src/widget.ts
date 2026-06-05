@@ -53,6 +53,8 @@ export class OnyxChatWidget extends LitElement {
   // Citation state — plain fields (not @state) since Map mutations don't trigger Lit re-renders
   private documentMap = new Map<string, SearchDocument>();
   private citationMap = new Map<number, string>();
+  // Cache for fetched Lucide SVGs
+  private lucideSvgCache = new Map<string, string>();
 
   constructor() {
     super();
@@ -73,6 +75,60 @@ export class OnyxChatWidget extends LitElement {
     ) {
       this.scrollToBottom();
     }
+
+    // Ensure Lucide icons are loaded into any placeholders
+    this.loadLucideIcons();
+  }
+
+  private async fetchLucideSvg(name: string): Promise<string | null> {
+    if (this.lucideSvgCache.has(name)) return this.lucideSvgCache.get(name)!;
+    // Try GitHub CDN for lucide icons
+    const base = "https://cdn.jsdelivr.net/gh/lucide-icons/lucide@latest/icons";
+    const url = `${base}/${name}.svg`;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      let svg = await res.text();
+      // Normalize SVG: remove XML prolog and fix width/height to use em for sizing
+      svg = svg.replace(/<\?xml.*?\?>\s*/i, "");
+      svg = svg.replace(/width=\"[^"]*\"/i, 'width="1em"');
+      svg = svg.replace(/height=\"[^"]*\"/i, 'height="1em"');
+      // Ensure stroke uses currentColor where appropriate
+      svg = svg.replace(/stroke=\"none\"/gi, '');
+      this.lucideSvgCache.set(name, svg);
+      return svg;
+    } catch (e) {
+      console.warn("Failed to fetch lucide svg:", url, e);
+      return null;
+    }
+  }
+
+  private async loadLucideIcons() {
+    if (!this.shadowRoot) return;
+    const nodes = Array.from(
+      this.shadowRoot.querySelectorAll<HTMLElement>(".lucide-icon[data-icon]")
+    );
+    await Promise.all(
+      nodes.map(async (el) => {
+        const name = el.getAttribute("data-icon");
+        if (!name) return;
+        if (el.dataset["loaded"] === "1") return;
+        const svg = await this.fetchLucideSvg(name);
+        if (svg) {
+          el.innerHTML = svg;
+          // make svg inherit currentColor
+          const svgEl = el.querySelector("svg");
+          if (svgEl) {
+            svgEl.setAttribute("width", "1em");
+            svgEl.setAttribute("height", "1em");
+            svgEl.style.verticalAlign = "middle";
+            svgEl.setAttribute("stroke", "currentColor");
+            svgEl.setAttribute("fill", "none");
+          }
+          el.dataset["loaded"] = "1";
+        }
+      })
+    );
   }
 
   private scrollToBottom() {
@@ -88,24 +144,56 @@ export class OnyxChatWidget extends LitElement {
   connectedCallback() {
     super.connectedCallback();
 
-    // Resolve configuration
-    this.config = resolveConfig({
-      backendUrl: this.backendUrl,
-      apiKey: this.apiKey,
-      agentId: this.agentId,
-      primaryColor: this.primaryColor,
-      backgroundColor: this.backgroundColor,
-      textColor: this.textColor,
-      agentName: this.agentName,
-      logo: this.logo,
-      mode: this.mode,
-      includeCitations: this.includeCitations,
-    });
+    // Inject Material Symbols stylesheet into the host document (avoid @import in constructable stylesheets)
+    try {
+      const href =
+        "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined";
+      if (!document.querySelector(`link[href="${href}"]`)) {
+        const link = document.createElement("link");
+        link.rel = "stylesheet";
+        link.href = href;
+        document.head.appendChild(link);
+      }
+    } catch (e) {
+      console.warn("Failed to inject material symbols stylesheet:", e);
+    }
+
+    // Resolve configuration (guard against thrown errors so the widget doesn't crash)
+    try {
+      this.config = resolveConfig({
+        backendUrl: this.backendUrl,
+        apiKey: this.apiKey,
+        agentId: this.agentId,
+        primaryColor: this.primaryColor,
+        backgroundColor: this.backgroundColor,
+        textColor: this.textColor,
+        agentName: this.agentName,
+        logo: this.logo,
+        mode: this.mode,
+        includeCitations: this.includeCitations,
+      });
+    } catch (err: any) {
+      console.error("Failed to resolve widget config:", err);
+      this.error = err?.message || "Invalid widget configuration";
+      // Fallback minimal config so UI can render and show the error
+      this.config = resolveConfig({
+        backendUrl: this.backendUrl || "",
+        apiKey: this.apiKey || "",
+        agentId: this.agentId,
+        primaryColor: this.primaryColor,
+        backgroundColor: this.backgroundColor,
+        textColor: this.textColor,
+        agentName: this.agentName,
+        logo: this.logo,
+        mode: this.mode || "launcher",
+        includeCitations: this.includeCitations,
+      });
+    }
 
     // Apply custom colors
     this.applyCustomColors();
 
-    // Initialize API service
+    // Initialize API service (use config values; ApiService may validate further)
     this.apiService = new ApiService(
       this.config.backendUrl,
       this.config.apiKey
@@ -563,38 +651,14 @@ export class OnyxChatWidget extends LitElement {
             class="icon-button"
             @click=${this.resetConversation}
             title="Reset conversation"
+            aria-label="Reset conversation"
           >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-            >
-              <path
-                d="M14.448 3.10983V6.77746M14.448 6.77746H10.7803M14.448 6.77746L11.6117 4.11231C10.9547 3.45502 10.142 2.97486 9.24923 2.71664C8.35651 2.45842 7.41292 2.43055 6.50651 2.63564C5.6001 2.84072 4.76042 3.27208 4.06581 3.88945C3.3712 4.50683 2.84431 5.2901 2.53429 6.16618M1 12.8902V9.22254M1 9.22254H4.66763M1 9.22254L3.8363 11.8877C4.49326 12.545 5.30603 13.0251 6.19875 13.2834C7.09147 13.5416 8.03506 13.5694 8.94147 13.3644C9.84787 13.1593 10.6876 12.7279 11.3822 12.1105C12.0768 11.4932 12.6037 10.7099 12.9137 9.83381"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
+            <span class="lucide-icon" data-icon="refresh-cw" aria-hidden="true"></span>
           </button>
           ${this.config.mode === "launcher"
             ? html`
-                <button class="icon-button" @click=${this.close} title="Close">
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 28 28"
-                    fill="none"
-                    stroke="currentColor"
-                  >
-                    <path
-                      d="M21 7L7 21M7 7L21 21"
-                      stroke-width="2"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
+                <button class="icon-button" @click=${this.close} title="Close" aria-label="Close">
+                  <span class="lucide-icon" data-icon="x" aria-hidden="true"></span>
                 </button>
               `
             : ""}
@@ -694,21 +758,9 @@ export class OnyxChatWidget extends LitElement {
             this.isLoading ||
             this.isStreaming}
             title="Send message"
+            aria-label="Send message"
           >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 18 18"
-              fill="none"
-              stroke="currentColor"
-            >
-              <path
-                d="M8 2.6665V13.3335M8 2.6665L4 6.6665M8 2.6665L12 6.6665"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
+            <span class="lucide-icon" data-icon="send" aria-hidden="true"></span>
           </button>
         </div>
         <div class="disclaimer">
@@ -744,21 +796,9 @@ export class OnyxChatWidget extends LitElement {
           this.isLoading ||
           this.isStreaming}
           title="Send message"
+          aria-label="Send message"
         >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 18 18"
-            fill="none"
-            stroke="currentColor"
-          >
-            <path
-              d="M8 2.6665V13.3335M8 2.6665L4 6.6665M8 2.6665L12 6.6665"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
+          <span class="lucide-icon" data-icon="send" aria-hidden="true"></span>
         </button>
       </div>
     `;

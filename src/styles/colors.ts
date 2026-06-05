@@ -36,7 +36,7 @@ export const colors = css`
     --status-error-05: #c00;
 
       /* Message Bubbles */
-    --onyx-user-message-bg: var(--background-neutral-00);
-    --onyx-assistant-message-bg: var(--background-neutral-03);
+    --onyx-user-message-bg: var(--background-neutral-03);
+    --onyx-assistant-message-bg: #bee0ff;
   }
 `;

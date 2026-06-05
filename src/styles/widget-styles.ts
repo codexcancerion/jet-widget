@@ -160,6 +160,33 @@ export const widgetStyles = css`
     height: 32px;
   }
 
+  .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 18px;
+    line-height: 1;
+    display: inline-block;
+    vertical-align: middle;
+    user-select: none;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .icon-button .material-symbols-outlined,
+  .send-button .material-symbols-outlined {
+    font-size: 16px;
+  }
+
+  .lucide-icon {
+    display: inline-flex;
+    width: 1em;
+    height: 1em;
+    align-items: center;
+    justify-content: center;
+    color: inherit;
+  }
+
   .icon-button:hover {
     background: var(--background-neutral-00);
     color: var(--text-04);
