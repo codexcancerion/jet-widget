@@ -46,6 +46,8 @@ export function resolveConfig(attributes: Partial<WidgetConfig>): WidgetConfig {
     ),
     launcherDraggable: attributes.launcherDraggable ?? false,
     includeCitations: attributes.includeCitations ?? false,
+    attractionMessage: attributes.attractionMessage || "Have questions or inquiries? Ask me!",
+    showAttraction: attributes.showAttraction !== false && attributes.showAttraction !== "false",
   };
 
   if (!config.backendUrl || !config.apiKey) {

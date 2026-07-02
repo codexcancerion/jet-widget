@@ -1,6 +1,6 @@
 {
   "name": "onyx-chat-widget",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Embeddable chat widget for Onyx",
   "type": "module",
   "main": "dist/onyx-widget.js",

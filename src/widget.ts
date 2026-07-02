@@ -38,6 +38,8 @@ export class OnyxChatWidget extends LitElement {
   launcherDraggable?: boolean;
   @property({ attribute: "include-citations", type: Boolean })
   includeCitations?: boolean;
+  @property({ attribute: "attraction-message" }) attractionMessage?: string;
+  @property({ attribute: "show-attraction" }) showAttraction?: string | boolean;
 
   // Internal state
   @state() private isOpen = false;
@@ -50,8 +52,11 @@ export class OnyxChatWidget extends LitElement {
   @state() private inputValue = "";
   @state() private showEmptyPlaceholder = false;
   @state() private showEmptyHiding = false;
+  @state() private isAttractionVisible = false;
 
   private config!: WidgetConfig;
+  private hasOpenedWidget = false;
+  private attractionTimeoutId?: any;
   private apiService!: ApiService;
   private abortController?: AbortController;
   // Citation state — plain fields (not @state) since Map mutations don't trigger Lit re-renders
@@ -97,6 +102,12 @@ export class OnyxChatWidget extends LitElement {
       changedProperties.has("isStreaming")
     ) {
       this.scrollToBottom();
+    }
+
+    // Stop attraction cycle permanently if widget is opened
+    if (changedProperties.has("isOpen") && this.isOpen) {
+      this.hasOpenedWidget = true;
+      this.stopAttractionCycle();
     }
 
     // Ensure Lucide icons are loaded into any placeholders
@@ -204,6 +215,8 @@ export class OnyxChatWidget extends LitElement {
         launcherRight: this.launcherRight,
         launcherDraggable: this.launcherDraggable,
         includeCitations: this.includeCitations,
+        attractionMessage: this.attractionMessage,
+        showAttraction: this.showAttraction,
       });
     } catch (err: any) {
       console.error("Failed to resolve widget config:", err);
@@ -223,6 +236,8 @@ export class OnyxChatWidget extends LitElement {
         launcherRight: this.launcherRight,
         launcherDraggable: this.launcherDraggable,
         includeCitations: this.includeCitations,
+        attractionMessage: this.attractionMessage,
+        showAttraction: this.showAttraction,
       });
     }
 
@@ -252,6 +267,14 @@ export class OnyxChatWidget extends LitElement {
     if (this.config.mode === "inline") {
       this.isOpen = true;
     }
+
+    // Start attraction popup cycle if in launcher mode
+    this.startAttractionCycle();
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this.stopAttractionCycle();
   }
 
   private applyCustomColors() {
@@ -342,6 +365,52 @@ export class OnyxChatWidget extends LitElement {
     this.citationMap.clear();
     clearSession();
     this.showEmptyPlaceholder = true;
+  }
+
+  private startAttractionCycle() {
+    if (!this.config.showAttraction || this.config.mode !== "launcher" || this.hasOpenedWidget || this.isOpen) {
+      return;
+    }
+    this.stopAttractionCycle();
+    this.attractionTimeoutId = setTimeout(() => {
+      this.showAttractionPopup();
+    }, 4000);
+  }
+
+  private showAttractionPopup() {
+    if (!this.config.showAttraction || this.hasOpenedWidget || this.isOpen) return;
+    this.isAttractionVisible = true;
+    this.attractionTimeoutId = setTimeout(() => {
+      this.hideAttractionPopup();
+    }, 6000);
+  }
+
+  private hideAttractionPopup() {
+    this.isAttractionVisible = false;
+    if (!this.config.showAttraction || this.hasOpenedWidget || this.isOpen) return;
+    this.attractionTimeoutId = setTimeout(() => {
+      this.showAttractionPopup();
+    }, 8000);
+  }
+
+  private stopAttractionCycle() {
+    this.isAttractionVisible = false;
+    if (this.attractionTimeoutId) {
+      clearTimeout(this.attractionTimeoutId);
+      this.attractionTimeoutId = undefined;
+    }
+  }
+
+  private dismissAttraction(e: Event) {
+    e.stopPropagation();
+    this.hasOpenedWidget = true;
+    this.stopAttractionCycle();
+  }
+
+  private onAttractionClick() {
+    this.hasOpenedWidget = true;
+    this.stopAttractionCycle();
+    this.isOpen = true;
   }
 
   /**
@@ -829,6 +898,22 @@ export class OnyxChatWidget extends LitElement {
     return html`
       ${isLauncher
         ? html`
+            ${this.isAttractionVisible && !this.isOpen && !this.hasOpenedWidget
+              ? html`
+                  <div class="attraction-bubble" @click=${this.onAttractionClick}>
+                    <span class="attraction-text">${this.config.attractionMessage}</span>
+                    <button
+                      class="attraction-close"
+                      @click=${this.dismissAttraction}
+                      title="Dismiss"
+                      aria-label="Dismiss"
+                    >
+                      <span class="lucide-icon" data-icon="x" aria-hidden="true"></span>
+                    </button>
+                    <div class="attraction-arrow"></div>
+                  </div>
+                `
+              : ""}
             <button
               class="launcher ${draggable ? "launcher--draggable" : ""} ${this.isDragging ? "launcher--dragging" : ""
           }"
@@ -1041,20 +1126,4 @@ declare global {
     "onyx-chat-widget": OnyxChatWidget;
   }
 }
-this.isLoading ||
-  this.isStreaming}
-title = "Send message"
-aria - label="Send message"
-  >
-  <span class="lucide-icon" data - icon="send" aria - hidden="true" > </span>
-    </button>
-    </div>
-      `;
-  }
-}
 
-declare global {
-  interface HTMLElementTagNameMap {
-    "onyx-chat-widget": OnyxChatWidget;
-  }
-}

@@ -124,6 +124,8 @@ That's it! The widget will appear as a floating button in the bottom-right corne
 | `launcher-right`    | string  | `"20px"`     | Distance from the right viewport edge (e.g. `"20px"`, `"40px"`, `"2rem"`)  |
 | `launcher-draggable`| boolean | `false`      | When `true`, the floating launcher can be dragged vertically to clear obstructing content |
 | `include-citations` | boolean | `false`      | Include citation markers in responses                                       |
+| `show-attraction`   | boolean | `true`       | When `true`, shows a cyclic attraction popup beside the launcher button     |
+| `attraction-message`| string  | `"Have questions..."` | Custom message to display in the attraction popup (defaults to `"Have questions or inquiries? Ask me!"`) |
 
 **Note**: These attributes must be provided as HTML attributes. Only `backend-url` and `api-key` can optionally be set via environment variables for self-hosted builds.
 

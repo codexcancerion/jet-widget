@@ -32,6 +32,12 @@ export interface WidgetConfig {
 
   // Optional - Citations
   includeCitations?: boolean;
+
+  // Optional - Attraction
+  /** The message displayed in the launcher attraction popup. */
+  attractionMessage?: string;
+  /** When true, shows the attraction popup bubble. */
+  showAttraction?: boolean | string;
 }
 
 export interface ChatState {
