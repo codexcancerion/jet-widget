@@ -22,6 +22,14 @@ export interface WidgetConfig {
   // Optional - Display
   mode?: "launcher" | "inline";
 
+  // Optional - Launcher positioning
+  /** Distance from the bottom edge of the viewport (e.g. "20px", "40px"). */
+  launcherBottom?: string;
+  /** Distance from the right edge of the viewport (e.g. "20px", "40px"). */
+  launcherRight?: string;
+  /** When true, the floating launcher button can be dragged. */
+  launcherDraggable?: boolean;
+
   // Optional - Citations
   includeCitations?: boolean;
 }

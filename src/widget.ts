@@ -32,6 +32,10 @@ export class OnyxChatWidget extends LitElement {
   @property({ attribute: "agent-name" }) agentName?: string;
   @property({ attribute: "logo" }) logo?: string;
   @property() mode?: "launcher" | "inline";
+  @property({ attribute: "launcher-bottom" }) launcherBottom?: string;
+  @property({ attribute: "launcher-right" }) launcherRight?: string;
+  @property({ attribute: "launcher-draggable", type: Boolean })
+  launcherDraggable?: boolean;
   @property({ attribute: "include-citations", type: Boolean })
   includeCitations?: boolean;
 
@@ -56,6 +60,25 @@ export class OnyxChatWidget extends LitElement {
   // Cache for fetched Lucide SVGs
   private lucideSvgCache = new Map<string, string>();
 
+  // Drag state for the floating launcher (not @state — manual re-render via requestUpdate)
+  private isDragging = false;
+  private dragHasMoved = false;
+  private dragPointerId: number | null = null;
+  /** Cached rect at pointerdown — used for sizing and as the origin for transform delta. */
+  private dragStartRect: DOMRect | null = null;
+  /** Pointer Y offset from the button's top at the moment of grab. */
+  private dragGrabOffsetY = 0;
+  private boundOnPointerMove = (e: PointerEvent) => this.onPointerMove(e);
+  private boundOnPointerUp = (e: PointerEvent) => this.onPointerUp(e);
+  private launcherEl: HTMLButtonElement | null = null;
+
+  /**
+   * Maximum Y travel allowed when dragging the launcher, in pixels.
+   * The button can move up/down within this band from its original position.
+   * Set to 0 to disable the limit (drag from original to viewport edge).
+   */
+  private readonly DRAG_Y_RANGE_PX = 120;
+
   constructor() {
     super();
     // Configure marked options
@@ -78,6 +101,13 @@ export class OnyxChatWidget extends LitElement {
 
     // Ensure Lucide icons are loaded into any placeholders
     this.loadLucideIcons();
+
+    // Cache reference to the launcher element for drag calculations
+    if (!this.launcherEl) {
+      this.launcherEl = this.shadowRoot?.querySelector(
+        ".launcher"
+      ) as HTMLButtonElement | null;
+    }
   }
 
   private async fetchLucideSvg(name: string): Promise<string | null> {
@@ -170,6 +200,9 @@ export class OnyxChatWidget extends LitElement {
         agentName: this.agentName,
         logo: this.logo,
         mode: this.mode,
+        launcherBottom: this.launcherBottom,
+        launcherRight: this.launcherRight,
+        launcherDraggable: this.launcherDraggable,
         includeCitations: this.includeCitations,
       });
     } catch (err: any) {
@@ -186,12 +219,18 @@ export class OnyxChatWidget extends LitElement {
         agentName: this.agentName,
         logo: this.logo,
         mode: this.mode || "launcher",
+        launcherBottom: this.launcherBottom,
+        launcherRight: this.launcherRight,
+        launcherDraggable: this.launcherDraggable,
         includeCitations: this.includeCitations,
       });
     }
 
     // Apply custom colors
     this.applyCustomColors();
+
+    // Apply launcher positioning defaults via CSS custom properties
+    this.applyLauncherPosition();
 
     // Initialize API service (use config values; ApiService may validate further)
     this.apiService = new ApiService(
@@ -240,6 +279,26 @@ export class OnyxChatWidget extends LitElement {
     // Text color
     if (this.config.textColor) {
       this.style.setProperty("--text-04", this.config.textColor);
+    }
+  }
+
+  /**
+   * Apply configured launcher bottom/right offsets to the host element via
+   * CSS custom properties. The .launcher and .container rules pick these up
+   * automatically.
+   */
+  private applyLauncherPosition() {
+    if (this.config.launcherBottom) {
+      this.style.setProperty(
+        "--onyx-launcher-bottom",
+        this.config.launcherBottom
+      );
+    }
+    if (this.config.launcherRight) {
+      this.style.setProperty(
+        "--onyx-launcher-right",
+        this.config.launcherRight
+      );
     }
   }
 
@@ -378,17 +437,17 @@ export class OnyxChatWidget extends LitElement {
       <div class="citation-list">
         ${visible.map((c, i) => this.renderCitationBadge(c, i + 1))}
         ${overflow.length > 0
-          ? html`
+        ? html`
               <button class="citation-more" @click=${this.toggleCitationExpand}>
                 +${overflow.length} more
               </button>
               <div class="citation-overflow">
                 ${overflow.map((c, i) =>
-                  this.renderCitationBadge(c, limit + i + 1)
-                )}
+          this.renderCitationBadge(c, limit + i + 1)
+        )}
               </div>
             `
-          : ""}
+        : ""}
       </div>
     `;
   }
@@ -401,6 +460,173 @@ export class OnyxChatWidget extends LitElement {
     if (this.config.mode === "launcher") {
       this.isOpen = false;
     }
+  }
+
+  /**
+   * Begin a drag of the floating launcher. We only initiate a drag once the
+   * pointer has moved a few pixels — otherwise a plain click would never
+   * toggle the chat popup.
+   */
+  private onLauncherPointerDown(e: PointerEvent) {
+    if (!this.config.launcherDraggable) return;
+    // Disable drag on mobile (touch + narrow viewport)
+    if (this.isMobileViewport()) return;
+    if (e.button !== 0 && e.pointerType === "mouse") return;
+
+    const el = this.launcherEl;
+    if (!el) return;
+
+    // Capture pointer so the element keeps receiving events even if the
+    // pointer leaves it.
+    try {
+      el.setPointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+
+    // Cache the starting rect ONCE — used as the origin for transform delta.
+    this.dragStartRect = el.getBoundingClientRect();
+
+    // Pointer Y offset from the button's top at grab time. Used so the
+    // button doesn't snap its top to the pointer on every move.
+    this.dragGrabOffsetY = e.clientY - this.dragStartRect.top;
+
+    this.dragPointerId = e.pointerId;
+    this.isDragging = true;
+    this.dragHasMoved = false;
+
+    // Window-level fallback listeners in case pointer capture is unavailable.
+    window.addEventListener("pointermove", this.boundOnPointerMove);
+    window.addEventListener("pointerup", this.boundOnPointerUp);
+    window.addEventListener("pointercancel", this.boundOnPointerUp);
+  }
+
+  private onPointerMove(e: PointerEvent) {
+    if (
+      !this.isDragging ||
+      this.dragPointerId === null ||
+      e.pointerId !== this.dragPointerId
+    ) {
+      return;
+    }
+
+    // Threshold: only treat as drag after the pointer has moved enough
+    // vertically from the grab point.
+    if (!this.dragHasMoved) {
+      const startY = this.dragStartRect
+        ? this.dragStartRect.top + this.dragGrabOffsetY
+        : e.clientY;
+      if (Math.abs(e.clientY - startY) < 4) return;
+      this.dragHasMoved = true;
+    }
+
+    e.preventDefault();
+
+    const el = this.launcherEl;
+    if (!el) return;
+
+    // Y-axis drag: new top = pointer Y - grab offset. X stays put.
+    const newTop = e.clientY - this.dragGrabOffsetY;
+
+    // Clamp Y to a limited range from the original position. The launcher
+    // can move up/down by DRAG_Y_RANGE_PX from its starting point, but
+    // also cannot go off-screen.
+    const rect = this.dragStartRect;
+    if (!rect) return;
+    const vh = window.innerHeight;
+    const h = rect.height;
+
+    // Allowed Y range: [rect.top - DRAG_Y_RANGE_PX, rect.top + DRAG_Y_RANGE_PX]
+    // intersected with viewport bounds [0, vh - h].
+    const range = this.DRAG_Y_RANGE_PX;
+    const minTop = Math.max(0, rect.top - range);
+    const maxTop = Math.min(vh - h, rect.top + range);
+    const clampedTop = Math.max(minTop, Math.min(maxTop, newTop));
+
+    // Translate from the original rect position. X is always 0 (no horizontal
+    // movement) so the launcher stays anchored to the right edge.
+    const ty = clampedTop - rect.top;
+
+    el.style.transform = `translate3d(0, ${ty}px, 0)`;
+    el.style.transition = "none";
+  }
+
+  private onPointerUp(e: PointerEvent) {
+    if (
+      this.dragPointerId === null ||
+      e.pointerId !== this.dragPointerId
+    ) {
+      return;
+    }
+    this.isDragging = false;
+    this.dragPointerId = null;
+
+    window.removeEventListener("pointermove", this.boundOnPointerMove);
+    window.removeEventListener("pointerup", this.boundOnPointerUp);
+    window.removeEventListener("pointercancel", this.boundOnPointerUp);
+
+    const el = this.launcherEl;
+    if (!el) {
+      this.dragHasMoved = false;
+      return;
+    }
+
+    try {
+      el.releasePointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+
+    // Convert final transform offset to bottom so the launcher re-anchors
+    // via inline style (no transform = no visual artifact on next render).
+    // Right is left unchanged from the configured value.
+    if (this.dragHasMoved && this.dragStartRect) {
+      const ty = this.parseTranslateY(el.style.transform);
+      const rect = this.dragStartRect;
+      const finalTop = rect.top + ty;
+      const vh = window.innerHeight;
+      const newBottomPx = Math.max(0, Math.round(vh - finalTop - rect.height));
+
+      el.style.transform = "";
+      el.style.transition = "";
+      el.style.bottom = `${newBottomPx}px`;
+      // right is intentionally NOT set — leave it at the configured value
+    } else {
+      el.style.transition = "";
+    }
+
+    this.dragStartRect = null;
+
+    // Suppress the click that would otherwise toggle the chat popup
+    if (this.dragHasMoved) {
+      const swallow = (ev: Event) => {
+        ev.stopPropagation();
+        ev.preventDefault();
+        window.removeEventListener("click", swallow, true);
+      };
+      window.addEventListener("click", swallow, true);
+    }
+
+    this.dragHasMoved = false;
+  }
+
+  private parseTranslateY(transform: string): number {
+    const m = transform.match(
+      /translate3d\(\s*-?\d+(?:\.\d+)?px,\s*(-?\d+(?:\.\d+)?)px/
+    );
+    return m ? parseFloat(m[1]) : 0;
+  }
+
+  /**
+   * True when the viewport is mobile-sized or the input is primarily touch.
+   * Used to disable the draggable launcher on mobile per requirements.
+   */
+  private isMobileViewport(): boolean {
+    if (typeof window === "undefined") return false;
+    if (window.matchMedia("(max-width: 768px)").matches) return true;
+    // Coarse pointer = touch-first device
+    if (window.matchMedia("(pointer: coarse)").matches) return true;
+    return false;
   }
 
   private handleInput(e: InputEvent) {
@@ -595,12 +821,18 @@ export class OnyxChatWidget extends LitElement {
     const showContainer = this.config.mode === "inline" || this.isOpen;
     const hasMessages = this.messages.length > 0 || this.isStreaming;
     const isCompactInline = this.config.mode === "inline" && !hasMessages;
+    const isLauncher = this.config.mode === "launcher";
+    // Disable drag on mobile viewports per spec
+    const draggable =
+      isLauncher && this.config.launcherDraggable && !this.isMobileViewport();
 
     return html`
-      ${this.config.mode === "launcher"
+      ${isLauncher
         ? html`
             <button
-              class="launcher"
+              class="launcher ${draggable ? "launcher--draggable" : ""} ${this.isDragging ? "launcher--dragging" : ""
+          }"
+              @pointerdown=${this.onLauncherPointerDown}
               @click=${this.toggleOpen}
               title="Open chat"
             >
@@ -615,13 +847,12 @@ export class OnyxChatWidget extends LitElement {
       ${showContainer
         ? html`
             <div
-              class="container ${this.config.mode === "inline"
-                ? "inline"
-                : ""} ${isCompactInline ? "compact" : ""}"
+              class="container ${isLauncher ? "launcher-mode" : "inline"} ${isCompactInline ? "compact" : ""
+          }"
             >
               ${isCompactInline
-                ? this.renderCompactInput()
-                : html`
+            ? this.renderCompactInput()
+            : html`
                     ${this.renderHeader()} ${this.renderMessages()}
                     ${this.renderInput()}
                   `}
@@ -656,12 +887,12 @@ export class OnyxChatWidget extends LitElement {
             <span class="lucide-icon" data-icon="refresh-cw" aria-hidden="true"></span>
           </button>
           ${this.config.mode === "launcher"
-            ? html`
+        ? html`
                 <button class="icon-button" @click=${this.close} title="Close" aria-label="Close">
                   <span class="lucide-icon" data-icon="x" aria-hidden="true"></span>
                 </button>
               `
-            : ""}
+        : ""}
         </div>
       </div>
     `;
@@ -680,7 +911,7 @@ export class OnyxChatWidget extends LitElement {
       
       <div class="messages">
         ${(this.showEmptyPlaceholder || (this.messages.length === 0 && !this.isStreaming))
-          ? html`
+        ? html`
               <div
                 class="empty-welcome ${this.showEmptyHiding ? "empty-welcome--hide" : ""}"
                 aria-hidden=${this.messages.length > 0}
@@ -696,24 +927,24 @@ export class OnyxChatWidget extends LitElement {
                 <div class="empty-welcome__subtitle">How can I help you today?</div>
               </div>
             `
-          : ""}
+        : ""}
         ${this.error ? html` <div class="error">${this.error}</div> ` : ""}
         ${this.messages.map(
           (msg) => html`
             <div class="message ${msg.role}">
               <div class="message-bubble">
                 ${msg.role === "assistant"
-                  ? html`${this.renderMarkdown(
-                      msg.content,
-                      msg.citations
-                    )}${this.renderCitations(msg.citations)}`
-                  : msg.content}
+              ? html`${this.renderMarkdown(
+                msg.content,
+                msg.citations
+              )}${this.renderCitations(msg.citations)}`
+              : msg.content}
               </div>
             </div>
           `
         )}
         ${showEllipsis
-          ? html`
+        ? html`
               <div class="message assistant">
                 <div class="message-bubble">
                   <div class="status-container">
@@ -723,17 +954,17 @@ export class OnyxChatWidget extends LitElement {
                       <div class="typing-dot"></div>
                     </div>
                     ${this.streamingStatus
-                      ? html`
+            ? html`
                           <span class="status-text"
                             >${this.streamingStatus}</span
                           >
                         `
-                      : ""}
+            : ""}
                   </div>
                 </div>
               </div>
             `
-          : ""}
+        : ""}
       </div>
     `;
   }
@@ -755,8 +986,8 @@ export class OnyxChatWidget extends LitElement {
             class="send-button"
             @click=${this.sendMessage}
             ?disabled=${!this.inputValue.trim() ||
-            this.isLoading ||
-            this.isStreaming}
+      this.isLoading ||
+      this.isStreaming}
             title="Send message"
             aria-label="Send message"
           >
@@ -793,8 +1024,8 @@ export class OnyxChatWidget extends LitElement {
           class="send-button"
           @click=${this.sendMessage}
           ?disabled=${!this.inputValue.trim() ||
-          this.isLoading ||
-          this.isStreaming}
+      this.isLoading ||
+      this.isStreaming}
           title="Send message"
           aria-label="Send message"
         >
@@ -802,6 +1033,23 @@ export class OnyxChatWidget extends LitElement {
         </button>
       </div>
     `;
+  }
+}
+
+declare global {
+  interface HTMLElementTagNameMap {
+    "onyx-chat-widget": OnyxChatWidget;
+  }
+}
+this.isLoading ||
+  this.isStreaming}
+title = "Send message"
+aria - label="Send message"
+  >
+  <span class="lucide-icon" data - icon="send" aria - hidden="true" > </span>
+    </button>
+    </div>
+      `;
   }
 }
 

@@ -8,13 +8,17 @@ export const widgetStyles = css`
   :host {
     display: block;
     font-family: var(--onyx-font-family);
+
+    /* Launcher position — overridable per-instance via inline style. */
+    --onyx-launcher-bottom: 20px;
+    --onyx-launcher-right: 20px;
   }
 
   .launcher {
     position: fixed;
     background: var(--background-neutral-00);
-    bottom: 20px;
-    right: 20px;
+    bottom: var(--onyx-launcher-bottom);
+    right: var(--onyx-launcher-right);
     width: 56px;
     height: 56px;
     border-radius: 50%;
@@ -30,6 +34,19 @@ export const widgetStyles = css`
       transform 200ms cubic-bezier(0.4, 0, 0.2, 1),
       box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1),
       background 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    touch-action: none; /* allow pointer-based drag on touch devices */
+  }
+
+  .launcher--draggable {
+    cursor: grab;
+  }
+
+  .launcher--dragging {
+    cursor: grabbing;
+    transition: none; /* snap instantly to pointer while dragging */
+    user-select: none;
+    /* Hint the compositor to keep this on its own layer for smooth drag */
+    will-change: transform;
   }
 
   .launcher img {
@@ -49,8 +66,8 @@ export const widgetStyles = css`
 
   .container {
     position: fixed;
-    bottom: 20px;
-    right: 20px;
+    bottom: var(--onyx-launcher-bottom);
+    right: var(--onyx-launcher-right);
     width: 400px;
     height: 600px;
     background: var(--background-neutral-00);
@@ -87,7 +104,7 @@ export const widgetStyles = css`
   .container.inline.compact {
     background: transparent;
     border: none;
-    // box-shadow: none;    
+    // box-shadow: none;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     border-radius: var(--onyx-radius-16);
   }

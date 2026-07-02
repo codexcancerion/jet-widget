@@ -17,6 +17,7 @@ An embeddable, lightweight chat widget that brings AI-powered conversations to a
 - ♿ **Markdown Support** - Rich text formatting in responses
 - 💾 **Session Persistence** - Conversations survive page reloads
 - 🎯 **Two Display Modes** - Floating launcher or inline embed
+- 🧲 **Draggable Launcher** - Reposition the floating button vertically to clear obstructing content (Y-axis only, limited range)
 
 ## Quick Start
 
@@ -110,16 +111,19 @@ That's it! The widget will appear as a floating button in the bottom-right corne
 
 ### Optional Attributes
 
-| Attribute          | Type   | Default       | Description                              |
-| ------------------ | ------ | ------------- | ---------------------------------------- |
-| `agent-id`         | number | `undefined`   | Specific agent/persona to use            |
-| `agent-name`       | string | `"Assistant"` | Display name in header                   |
-| `logo`             | string | Onyx logo     | URL to custom logo image                 |
-| `primary-color`    | string  | `#1c1c1c`     | Primary brand color (buttons, accents)   |
-| `background-color` | string  | `#e9e9e9`     | Widget background color                  |
-| `text-color`       | string  | `#000000bf`   | Text color (75% opacity black)           |
-| `mode`             | string  | `"launcher"`  | Display mode: `"launcher"` or `"inline"` |
-| `include-citations`| boolean | `false`       | Include citation markers in responses    |
+| Attribute           | Type    | Default      | Description                                                                 |
+| ------------------- | ------- | ------------ | --------------------------------------------------------------------------- |
+| `agent-id`          | number  | `undefined`  | Specific agent/persona to use                                               |
+| `agent-name`        | string  | `"Assistant"`| Display name in header                                                      |
+| `logo`              | string  | Onyx logo    | URL to custom logo image                                                    |
+| `primary-color`     | string  | `#1c1c1c`    | Primary brand color (buttons, accents)                                      |
+| `background-color`  | string  | `#e9e9e9`    | Widget background color                                                     |
+| `text-color`        | string  | `#000000bf`  | Text color (75% opacity black)                                              |
+| `mode`              | string  | `"launcher"` | Display mode: `"launcher"` or `"inline"`                                    |
+| `launcher-bottom`   | string  | `"20px"`     | Distance from the bottom viewport edge (e.g. `"20px"`, `"40px"`, `"2rem"`) |
+| `launcher-right`    | string  | `"20px"`     | Distance from the right viewport edge (e.g. `"20px"`, `"40px"`, `"2rem"`)  |
+| `launcher-draggable`| boolean | `false`      | When `true`, the floating launcher can be dragged vertically to clear obstructing content |
+| `include-citations` | boolean | `false`      | Include citation markers in responses                                       |
 
 **Note**: These attributes must be provided as HTML attributes. Only `backend-url` and `api-key` can optionally be set via environment variables for self-hosted builds.
 
@@ -145,6 +149,10 @@ That's it! The widget will appear as a floating button in the bottom-right corne
   background-color="#FFFFFF"
   text-color="#1A1A1A"
   mode="launcher"
+  launcher-bottom="20px"
+  launcher-right="20px"
+  launcher-draggable="true"
+  include-citations="true"
 >
 </onyx-chat-widget>
 ```
@@ -186,6 +194,44 @@ The widget is embedded directly in your page layout. Perfect for dedicated suppo
 ```
 
 **CSS Tip**: The widget will fill its container's dimensions in inline mode.
+
+## Launcher Positioning
+
+In `launcher` mode, the floating button is anchored to the bottom-right corner of the viewport. You can adjust the anchor position, and you can optionally make the button draggable so users can move it out of the way of obstructing content.
+
+### Anchor Position
+
+Use `launcher-bottom` and `launcher-right` to control the gap from the viewport edges. Both accept any valid CSS length (e.g. `"20px"`, `"40px"`, `"2rem"`, `"5%"`).
+
+```html
+<onyx-chat-widget
+  mode="launcher"
+  launcher-bottom="40px"
+  launcher-right="40px"
+></onyx-chat-widget>
+```
+
+### Draggable Launcher
+
+Set `launcher-draggable="true"` to let users drag the launcher up or down to clear obstructing content. Designed to be a quick, light-touch interaction — not a full free-form reposition.
+
+- **Y-axis only** — the button stays anchored to the right edge horizontally
+- **Limited range** — can move at most ~120px vertically from its original position
+- **Auto-snaps** to the dropped position on release
+- **Disabled on mobile** — drag is a no-op on viewports ≤ 768px and on touch-first devices
+- **Resets on refresh** — drag position is not persisted; the button returns to its configured anchor on page reload
+- **Click still works** — a quick click (no drag) opens the chat popup as normal; a drag is treated separately so the popup doesn't toggle on release
+
+```html
+<onyx-chat-widget
+  mode="launcher"
+  launcher-bottom="20px"
+  launcher-right="20px"
+  launcher-draggable="true"
+></onyx-chat-widget>
+```
+
+> ⚠️ **Known issue (under improvement):** The draggable launcher is functional but not yet fully polished. Visual feedback, smoothing, and the snap-to-edge behavior on release are still being refined. Expect rough edges in the current build — see `src/widget.ts` (`onLauncherPointerDown` / `onPointerMove` / `onPointerUp`) for the current implementation.
 
 ## Development
 
